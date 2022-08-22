@@ -1,11 +1,17 @@
 import React, {useState, useEffect} from 'react'
-import { StyleSheet, Image, View, Text} from 'react-native'
+import { StyleSheet, Image, View, Text, TextInput} from 'react-native'
 import MapView, {Marker, Callout} from 'react-native-maps'
 import { requestForegroundPermissionsAsync, getCurrentPositionAsync} from 'expo-location'
+import { TouchableOpacity } from 'react-native-gesture-handler'
+import {MaterialIcons} from '@expo/vector-icons'
+import api from '../services/api'
 
 function Main({ navigation }){
+    const [devs, setDevs] = useState([])
     const [currentRegion, setCurrentRegion ] = useState(null)
-    console.log(currentRegion)
+    console.log(devs)
+    
+    
 
     useEffect(()=>{
         async function loadInitialPosition(){
@@ -13,11 +19,8 @@ function Main({ navigation }){
             if (granted){
                 const {coords} = await getCurrentPositionAsync({
                     enableHighAccuracy: true,
-                })
-                
+                })                
                 const {latitude, longitude} = coords;
-                console.log(latitude, longitude)
-
                 setCurrentRegion({
                     latitude, 
                     longitude,
@@ -29,22 +32,70 @@ function Main({ navigation }){
 
         loadInitialPosition()
     },[])
-   
-   return  <MapView initialRegion={currentRegion} style={styles.map}>
-                <Marker coordinate={{latitude: -19.686735 , longitude: -43.206500}}>
-                    <Image style={styles.avatar} source={{uri: 'https://avatars.githubusercontent.com/u/108985390?s=400&u=040afbca8c2fc84db54d17b156e08419593ed920&v=4'}}/>
 
+    async function loadDevs(){
+        const {latitude, longitude} = currentRegion
+        const response = await api.get('./search', {
+            params:{
+                latitude,
+                longitude,
+                techs: 'HTML'
+            }
+        })
+        setDevs (response.data.devs)
+    }
+
+    function handleRegionChanged(region){
+        setCurrentRegion(region)
+    }
+
+    if (!currentRegion){
+        return null
+    }
+   
+   return  (
+        <>
+            <MapView 
+            onRegionChangeComplete={handleRegionChanged} 
+            initialRegion={currentRegion} 
+            style={styles.map}
+            >
+            {devs.map(dev=>(
+                <Marker 
+                key={dev._id}
+                    coordinate={{latitude: dev.location.coordinates[1] , longitude: dev.location.coordinates[0]}}
+                >
+                    <Image 
+                        style={styles.avatar} 
+                        source={{uri: dev.avatar_url}}
+                    />
+                    
                     <Callout onPress={() => {
-                            navigation.navigate('Profile', {github_username: 'rafaelfons'})
-                    }}>
+                        navigation.navigate('Profile', {github_username: dev.github_username})}}
+                        >
                         <View style={styles.callout}>
-                            <Text style = {styles.devName} >Rafael Fonseca</Text>
-                            <Text style = {styles.devBio} >Estudante de Ciência da Computação.</Text>
-                            <Text style = {styles.devTechs} >JavaScript, CSS, HTML</Text>
+                            <Text style = {styles.devName} >{dev.name}</Text>
+                            <Text style = {styles.devBio} >{dev.bio}</Text>
+                            <Text style = {styles.devTechs} > {dev.techs.join(', ')} </Text>
                         </View>
                     </Callout>
                 </Marker>
-            </MapView>     
+            ))}
+            </MapView>
+            <View style = {styles.searchForm}>
+                <TextInput 
+                style = {styles.searchInput}
+                placeholder = "Buscar devs por techs"
+                placeholderTextColor="#999"
+                autoCapitalize = "words"
+                autoCorrect = {false}
+                />
+                <TouchableOpacity onPress={loadDevs} style = {styles.loadButton}>
+                   <MaterialIcons name= "my-location" size={20} color="#000" />
+                </TouchableOpacity>            
+            </View>
+        </>
+    )     
 }
 
 const styles = StyleSheet.create({
@@ -52,9 +103,9 @@ const styles = StyleSheet.create({
         flex: 1
     },
     avatar:{
-        width: 54,
-        height: 54,
-        barderRadius: 4,
+        width: 40,
+        height: 40,
+        borderRadius: 50,
         borderWidth: 4,
         borderColor: '#000',
     },
@@ -72,6 +123,33 @@ const styles = StyleSheet.create({
     },
     devTechs:{
         marginTop: 5
+    },
+    searchForm: {
+        position : 'absolute',
+        bottom: 20,
+        left: 20,
+        right: 20,
+        zIndex: 5,
+        flexDirection:'row'
+    },
+    searchInput:{
+        flex: 1,
+        height:40,
+        backgroundColor: '#fff',
+        color:'#333',
+        borderRadius: 25,
+        paddingHorizontal: 20,
+        fontSize: 16,
+        elevation: 8,
+    },
+    loadButton: {
+        width: 50,
+        height: 40,
+        backgroundColor:'#8E4DFF',
+        borderRadius: 25,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: 15
     }
 })
 
