@@ -5,12 +5,14 @@ import { requestForegroundPermissionsAsync, getCurrentPositionAsync} from 'expo-
 import { TouchableOpacity } from 'react-native-gesture-handler'
 import {MaterialIcons} from '@expo/vector-icons'
 import api from '../services/api'
+import {connect, disconnect} from '../services/socket'
+ 
 
 function Main({ navigation }){
     const [devs, setDevs] = useState([])
     const [currentRegion, setCurrentRegion ] = useState(null)
     const [techs, setTechs] = useState('')
-    console.log(devs)
+   
     
     
 
@@ -25,14 +27,19 @@ function Main({ navigation }){
                 setCurrentRegion({
                     latitude, 
                     longitude,
-                    latitudeDelta: 0.08,
-                    longitudeDelta: 0.08,    
+                    latitudeDelta: 0.04,
+                    longitudeDelta: 0.04,    
             })
             }
         }
 
         loadInitialPosition()
     },[])
+
+    function setupWebsocket(){
+        connect()
+        
+    }
 
     async function loadDevs(){
         const {latitude, longitude} = currentRegion
@@ -41,9 +48,10 @@ function Main({ navigation }){
                 latitude,
                 longitude,
                 techs
-            }
+            } 
         })
         setDevs (response.data.devs)
+        setupWebsocket()
     }
 
     function handleRegionChanged(region){
